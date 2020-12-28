@@ -81,7 +81,7 @@ export default {
       this.$refs.loginFormRef.validate(async valid => {
         if (valid) {
           await this.$http.post('login', this.loginForm).then(res => {
-            console.log(res)
+            //console.log(res)
             if (res.data.meta.status == 200) {
               //console.log('登录成功');
               this.$message.success(res.data.meta.msg)
