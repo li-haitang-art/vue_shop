@@ -46,7 +46,8 @@
                       content="分配角色"提示文字内容，placement="top"在上方显示，
                       enterable="false"鼠标是否可以进入提示框中，默认为true -->
                       <el-tooltip effect="dark" content="分配角色" placement="top" :enterable="false">
-                        <el-button type="warning" icon="el-icon-setting"  size="mini"></el-button>
+                        <el-button type="warning" icon="el-icon-setting"  size="mini" 
+                        @click="setRole(scope.row)"></el-button>
                       </el-tooltip>
                   </template>
               </el-table-column>
@@ -102,9 +103,27 @@
                 <el-input v-model="editForm.mobile"></el-input>
             </el-form-item>
         </el-form>
-        <span slot="footer" class="">
+        <span slot="footer" class="dialog-footer">
             <el-button @click="editDialogVisible = false">取消</el-button>
             <el-button type="primary" @click="editUserInfo">确定</el-button>
+        </span>
+      </el-dialog>
+      <!-- 这是分配角色的对话框 -->
+      <el-dialog title="分配角色" 
+      :visible.sync="setRoleDialogVisible" width="50%" @close="setRoleDialogClosed">
+        <div>
+            <p>当前的用户：{{userInfo.username}}</p>
+            <p>当前的角色：{{userInfo.role_name}}</p>
+            <p>分配新角色：
+                <el-select v-model="selectedRoleId" placeholder="请选择">
+                    <el-option v-for="item in rolesList" :key="item.id" 
+                    :label="item.roleName" :value="item.id"></el-option>
+                </el-select>  
+            </p>
+        </div>
+        <span slot="footer" class="dialog-footer">
+            <el-button @click="setRoleDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveRoleInfo">确定</el-button>
         </span>
       </el-dialog>
   </div>
@@ -145,10 +164,16 @@ export default {
             },
             userList : [],
             total : 0,
+            //已选择的角色id值
+            selectedRoleId : '',
             //控制修改对话框的显示于隐藏
             editDialogVisible:false,
             //控制添加对话框的显示于隐藏
             addDialogVisible : false,
+            //控制分配角色对话框的显示与隐藏
+            setRoleDialogVisible:false,
+            //所有角色的数据列表
+            rolesList:[],
             //添加用户的表单数据
             addForm:{
                 username : '',
@@ -157,9 +182,9 @@ export default {
                 mobile : ''
             },
             //查询到的用户信息对象
-            editForm:{
-
-            },
+            editForm:{},
+            //需要被分配权限的空对象
+            userInfo:{},
             //添加表单的验证规则对象
             addFormRules:{
                 username:[
@@ -348,21 +373,40 @@ export default {
                     return this.$message.info('已经取消删除');
                 }
                 
+            },
+            async setRole(userInfo){
+                this.userInfo = userInfo;
+                //获取所有的角色列表
+                this.$http.get('roles').then(res=>{
+                    if(res.data.meta.status!=200){
+                        return this.$message.error('获取角色列表失败！');
+                    }
+                    this.rolesList = res.data.data;
+                })
+                this.setRoleDialogVisible = true;
+            },
+            //点击按钮分配角色
+            async saveRoleInfo(){
+                if(!this.selectedRoleId){
+                   return this.$message.error('请选择要分配的角色')
+                }
+                await this.$http.put(`users/${this.userInfo.id}/role`,{
+                    rid : this.selectedRoleId
+                }).then(res=>{
+                    if(res.data.meta.status!=200){
+                        return this.$message.error('更新角色失败！')
+                    }
+                    this.$message.success('更新成功！')
+                    this.getUserList();
+                    this.setRoleDialogVisible = false;
+                })
+            },
+            //监听分配角色对话框的关闭事件
+            setRoleDialogClosed(){
+                this.selectedRoleId = ''
+                this.userInfo = {}
             }
     }
     
 }
 </script>
-
-<style>
-.el-card{
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.15) !important;
-}
-.el-table{
-    margin-top: 15px;
-    font-size: 12px;
-}
-.el-pagination{
-    margin-top: 15px;
-}
-</style>
